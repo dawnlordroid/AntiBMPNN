@@ -1,0 +1,57 @@
+name: Publish AntiBMPNN Docker images to GHCR
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        flavor: [cpu, cuda]
+        include:
+          - flavor: cpu
+            dockerfile: Dockerfile.cpu
+            tag_suffix: cpu
+          - flavor: cuda
+            dockerfile: Dockerfile.cuda
+            tag_suffix: cuda
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/antibmpnn
+          tags: |
+            type=raw,value=${{ matrix.tag_suffix }}
+            type=sha,format=short,prefix=${{ matrix.tag_suffix }}-
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64
