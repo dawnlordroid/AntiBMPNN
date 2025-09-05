@@ -1,0 +1,20 @@
+# AntiBMPNN CPU 전용 이미지 (apt 없이 빌드, Pip만 사용)
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    WORKDIR=/workspace/AntiBMPNN
+
+WORKDIR ${WORKDIR}
+COPY . ${WORKDIR}
+
+# PyTorch CPU 휠 + 필수 패키지
+RUN python -m pip install --upgrade pip setuptools wheel \
+ && python -m pip install --index-url https://download.pytorch.org/whl/cpu torch \
+ && python -m pip install numpy pandas peptides scikit-learn tqdm requests
+
+# 작업 디렉터리 준비
+RUN mkdir -p inputs example seqs model_weights
+
+CMD ["/bin/bash"]
